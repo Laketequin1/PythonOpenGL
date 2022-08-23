@@ -18,6 +18,16 @@ class App:
         #Start main
         self.main_loop()
         
+    def create_shader(self, vertexFilepath, fragmentFilepath):
+        
+        with open(vertexFilepath, 'r') as f:
+            vertex_src = f.readlines()
+        
+        with open(fragmentFilepath, 'r') as f:
+            fragment_src = f.readlines()
+        
+        shader = gl.shaders.compileProgram()
+        
     def main_loop(self):
         
         running = True
