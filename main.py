@@ -2,6 +2,9 @@ import pygame as pg
 import OpenGL.GL as gl
 import numpy as np
 import ctypes
+import OpenGL.GL.shaders as gls
+
+import random
 
 class App:
     
@@ -12,10 +15,15 @@ class App:
         pg.display.set_mode((640, 480), pg.OPENGL|pg.DOUBLEBUF)
         self.clock = pg.time.Clock()
         
-        #Initilize OpenGL
+        # Initilize OpenGL
         gl.glClearColor(0.6, 0.6, 0.9, 1)
+        self.shader = self.create_shader("shaders/vertex.txt", "shaders/fragment.txt")
+        gl.glUseProgram(self.shader)
         
-        #Start main
+        # Add triangle
+        self.triangle = Triangle((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)), (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)), (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)))
+        
+        # Start main
         self.main_loop()
         
     def create_shader(self, vertexFilepath, fragmentFilepath):
@@ -26,7 +34,12 @@ class App:
         with open(fragmentFilepath, 'r') as f:
             fragment_src = f.readlines()
         
-        shader = gl.shaders.compileProgram()
+        shader = gls.compileProgram(
+            gls.compileShader(vertex_src, gl.GL_VERTEX_SHADER),
+            gls.compileShader(fragment_src, gl.GL_FRAGMENT_SHADER)
+        )
+        
+        return shader
         
     def main_loop(self):
         
@@ -39,6 +52,15 @@ class App:
             
             # Refresh screen
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            
+            # Update
+            self.triangle = Triangle((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)), (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)), (random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1)))
+            
+            # Draw
+            gl.glUseProgram(self.shader)
+            gl.glBindVertexArray(self.triangle.vao)
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.triangle.vertex_count)
+            
             pg.display.flip()
             
             # Clock
@@ -46,22 +68,23 @@ class App:
             
         self.quit()
     
-    @staticmethod
-    def quit():
+    def quit(self):
         
+        self.triangle.destroy()
+        gl.glDeleteProgram(self.shader)
         pg.quit()
 
 
-class Tryangle:
+class Triangle:
     
-    def __init__(self):
+    def __init__(self, point1, point2, point3):
         
         # x, y, z, r, g, b
-        self.vertices = {
-           -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
-            0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
-            0.0,  0.5, 0.0, 0.0, 0.0, 1.0
-        }
+        self.vertices = (
+            *point1, 1.0, 0.0, 0.0,
+            *point2, 0.0, 1.0, 0.0,
+            *point3, 0.0, 0.0, 1.0
+        )
         
         self.vertices = np.array(self.vertices, dtype=np.float32)
         
