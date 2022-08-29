@@ -17,6 +17,8 @@ class App:
         
         # Initilize OpenGL
         gl.glClearColor(0.6, 0.6, 0.9, 1)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         self.shader = self.create_shader("shaders/vertex.txt", "shaders/fragment.txt")
         gl.glUseProgram(self.shader)
         gl.glUniform1i(gl.glGetUniformLocation(self.shader, "imageTexture"), 0)
@@ -142,7 +144,7 @@ class Material:
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
         
         # Load image, then get height, and the images data
-        image = pg.image.load(filepath).convert()
+        image = pg.image.load(filepath).convert_alpha()
         image_width, image_height = image.get_rect().size
         image_data = pg.image.tostring(image, "RGBA")
         
