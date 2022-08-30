@@ -26,6 +26,7 @@ class App:
         # Initilize OpenGL
         gl.glClearColor(0.6, 0.6, 0.9, 1)
         gl.glEnable(gl.GL_BLEND)
+        gl.glEnable(gl.GL_DEPTH_TEST)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         self.shader = self.create_shader("shaders/vertex.txt", "shaders/fragment.txt")
         gl.glUseProgram(self.shader)
@@ -82,14 +83,22 @@ class App:
                     running = False
             
             # Update
-            self.cube.eulers[2] += 0.2
+            self.cube.eulers[2] += 0.8
             if self.cube.eulers[2] > 360:
-                self.cube.eulers[2] -= 360
+                self.cube.eulers[2] = 0
+                
+            self.cube.eulers[1] += 0.4
+            if self.cube.eulers[1] > 360:
+                self.cube.eulers[1] = 0
+                
+            self.cube.eulers[0] += 0.1
+            if self.cube.eulers[0] > 360:
+                self.cube.eulers[0] = 0
             
             pg.display.set_caption(str(int(self.clock.get_fps())) + " fps")
             
             # Refresh screen
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
             
             # Draw
             gl.glUseProgram(self.shader)
@@ -118,7 +127,7 @@ class App:
             pg.display.flip()
             
             # Clock
-            self.clock.tick(0)
+            self.clock.tick(120)
             
         self.quit()
     
