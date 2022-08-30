@@ -10,8 +10,9 @@ class Cube:
     
     def __init__(self, position, eulers):
         
-        self.position = np.array(position, dtype=np.float32)
+        # Eulers - pitch, roll, yaw
         self.eulers = np.array(eulers, dtype=np.float32)
+        self.position = np.array(position, dtype=np.float32)
 
 
 class App:
@@ -32,7 +33,7 @@ class App:
         gl.glUseProgram(self.shader)
         gl.glUniform1i(gl.glGetUniformLocation(self.shader, "imageTexture"), 0)
         
-        # Add cube and textures
+        # Add cube and textures. Eulers - pitch, roll, yaw
         self.cube = Cube(
             position = [0, 0, -3],
             eulers = [0, 0, 0]
@@ -104,6 +105,7 @@ class App:
             gl.glUseProgram(self.shader)
             self.wood_texture.use()
             
+            # Eulers - pitch, roll, yaw
             model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
             model_transform = pyrr.matrix44.multiply(
                 m1 = model_transform,
