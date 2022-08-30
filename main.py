@@ -1,10 +1,18 @@
+from turtle import position
 import pygame as pg
 import OpenGL.GL as gl
 import numpy as np
 import ctypes
 import OpenGL.GL.shaders as gls
+import pyrr
 
-import random
+class Cube:
+    
+    def __init__(self, position, eulers):
+        
+        self.position = np.array(position, dtype=np.float32)
+        self.eulers = np.array(eulers, dtype=np.float32)
+
 
 class App:
     
@@ -23,9 +31,28 @@ class App:
         gl.glUseProgram(self.shader)
         gl.glUniform1i(gl.glGetUniformLocation(self.shader, "imageTexture"), 0)
         
-        # Add triangle and textures
-        self.triangle = Triangle()
-        self.wood_texture = Material("gfx/cat.png")
+        # Add cube and textures
+        self.cube = Cube(
+            position = [0, 0, -3],
+            eulers = [0, 0, 0]
+        )
+        
+        self.cube_mesh = CubeMesh()
+        
+        self.wood_texture = Material("gfx/wood.jpeg")
+        
+        # Generate perspective projection
+        projection_transform = pyrr.matrix44.create_perspective_projection(
+            fovy = 45, aspect = 640/480,
+            near = 0.1, far = 10, dtype=np.float32
+        )
+        
+        gl.glUniformMatrix4fv(
+            gl.glGetUniformLocation(self.shader, "projection"),
+            1, gl.GL_FALSE, projection_transform
+        )
+        
+        self.modelMatrixLocation = gl.glGetUniformLocation(self.shader, "model")
         
         # Start main
         self.main_loop()
@@ -54,17 +81,39 @@ class App:
                 if event.type == pg.QUIT:
                     running = False
             
+            # Update
+            self.cube.eulers[2] += 0.2
+            if self.cube.eulers[2] > 360:
+                self.cube.eulers[2] -= 360
+            
+            pg.display.set_caption(str(int(self.clock.get_fps())) + " fps")
+            
             # Refresh screen
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-            
-            # Update
-            pg.display.set_caption(str(int(self.clock.get_fps())) + " fps")
             
             # Draw
             gl.glUseProgram(self.shader)
             self.wood_texture.use()
-            gl.glBindVertexArray(self.triangle.vao)
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.triangle.vertex_count)
+            
+            model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
+            model_transform = pyrr.matrix44.multiply(
+                m1 = model_transform,
+                m2 = pyrr.matrix44.create_from_eulers(
+                    eulers=np.radians(self.cube.eulers),
+                    dtype=np.float32
+                )
+            )
+            
+            model_transform = pyrr.matrix44.multiply(
+                m1 = model_transform,
+                m2 = pyrr.matrix44.create_from_translation(
+                    vec=self.cube.position,
+                    dtype=np.float32
+                )
+            )
+            gl.glUniformMatrix4fv(self.modelMatrixLocation, 1, gl.GL_FALSE, model_transform)
+            gl.glBindVertexArray(self.cube_mesh.vao)
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.cube_mesh.vertex_count)
             
             pg.display.flip()
             
@@ -76,26 +125,71 @@ class App:
     def quit(self):
         
         # Remove allocated memory and quit pygame
-        self.triangle.destroy()
+        self.cube_mesh.destroy()
         self.wood_texture.destroy()
         gl.glDeleteProgram(self.shader)
         pg.quit()
 
 
-class Triangle:
+class CubeMesh:
     
     def __init__(self):
         
-        # x, y, z, r, g, b, s, t
+        # x, y, z, s, t
         self.vertices = (
-            -0.5, -0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0,
-             0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,
-             0.0,  0.5, 0.0, 0.0, 0.0, 1.0, 0.5, 0.0
-        )
+           -0.5, -0.5, -0.5, 0, 0,
+            0.5, -0.5, -0.5, 1, 0,
+            0.5,  0.5, -0.5, 1, 1,
+
+            0.5,  0.5, -0.5, 1, 1,
+           -0.5,  0.5, -0.5, 0, 1,
+           -0.5, -0.5, -0.5, 0, 0,
+
+           -0.5, -0.5,  0.5, 0, 0,
+            0.5, -0.5,  0.5, 1, 0,
+            0.5,  0.5,  0.5, 1, 1,
+
+            0.5,  0.5,  0.5, 1, 1,
+           -0.5,  0.5,  0.5, 0, 1,
+           -0.5, -0.5,  0.5, 0, 0,
+
+           -0.5,  0.5,  0.5, 1, 0,
+           -0.5,  0.5, -0.5, 1, 1,
+           -0.5, -0.5, -0.5, 0, 1,
+
+           -0.5, -0.5, -0.5, 0, 1,
+           -0.5, -0.5,  0.5, 0, 0,
+           -0.5,  0.5,  0.5, 1, 0,
+
+            0.5,  0.5,  0.5, 1, 0,
+            0.5,  0.5, -0.5, 1, 1,
+            0.5, -0.5, -0.5, 0, 1,
+
+            0.5, -0.5, -0.5, 0, 1,
+            0.5, -0.5,  0.5, 0, 0,
+            0.5,  0.5,  0.5, 1, 0,
+
+           -0.5, -0.5, -0.5, 0, 1,
+            0.5, -0.5, -0.5, 1, 1,
+            0.5, -0.5,  0.5, 1, 0,
+
+            0.5, -0.5,  0.5, 1, 0,
+           -0.5, -0.5,  0.5, 0, 0,
+           -0.5, -0.5, -0.5, 0, 1,
+
+           -0.5,  0.5, -0.5, 0, 1,
+            0.5,  0.5, -0.5, 1, 1,
+            0.5,  0.5,  0.5, 1, 0,
+
+            0.5,  0.5,  0.5, 1, 0,
+           -0.5,  0.5,  0.5, 0, 0,
+           -0.5,  0.5, -0.5, 0, 1
+            )
+        
+        # // is integer division
+        self.vertex_count = len(self.vertices) // 5
         
         self.vertices = np.array(self.vertices, dtype=np.float32)
-        
-        self.vertex_count = 3
         
         # Create a vertex array where attributes for buffer are going to be stored, bind to make active, needs done before buffer
         self.vao = gl.glGenVertexArrays(1) 
@@ -110,17 +204,12 @@ class Triangle:
         # Location 1 - Postion
         gl.glEnableVertexAttribArray(0)
         # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
-        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(0))
+        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 20, ctypes.c_void_p(0))
         
-        # Location 2 - rgb
+        # Location 2 - ST
         gl.glEnableVertexAttribArray(1)
         # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
-        gl.glVertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(12))
-        
-        # Location 3 - rgb
-        gl.glEnableVertexAttribArray(2)
-        # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
-        gl.glVertexAttribPointer(2, 2, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(24))
+        gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 20, ctypes.c_void_p(12))
         
     def destroy(self):
         
@@ -163,6 +252,7 @@ class Material:
         
         # Remove allocated memory
         gl.glDeleteTextures(1, (self.texture, ))
+
 
 if __name__ == "__main__":
     myApp = App()
