@@ -1,4 +1,3 @@
-from turtle import position
 import pygame as pg
 import OpenGL.GL as gl
 import numpy as np
@@ -35,18 +34,18 @@ class App:
         
         # Add cube and textures. Eulers - pitch, roll, yaw
         self.cube = Cube(
-            position = [0, 0, -3],
+            position = [0, 0, -95],
             eulers = [0, 0, 0]
         )
         
         self.cube_mesh = CubeMesh()
         
-        self.wood_texture = Material("gfx/wood.jpeg")
+        self.wood_texture = Material("gfx/wood.jpg")
         
         # Generate perspective projection
         projection_transform = pyrr.matrix44.create_perspective_projection(
             fovy = 45, aspect = 640/480,
-            near = 0.1, far = 10, dtype=np.float32
+            near = 0.1, far = 100, dtype=np.float32
         )
         
         gl.glUniformMatrix4fv(
@@ -76,6 +75,8 @@ class App:
         
     def main_loop(self):
         
+        distance_change = -0.1
+        
         running = True
         while running:
             # Check events
@@ -95,6 +96,12 @@ class App:
             self.cube.eulers[0] += 0.1
             if self.cube.eulers[0] > 360:
                 self.cube.eulers[0] = 0
+                
+            self.cube.position[2] += distance_change
+            if self.cube.position[2] < -100:
+                distance_change *= -1
+            if self.cube.position[2] > -3:
+                distance_change = 0
             
             pg.display.set_caption(str(int(self.clock.get_fps())) + " fps")
             
