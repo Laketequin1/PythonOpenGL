@@ -110,10 +110,18 @@ class App:
             
             # Draw
             gl.glUseProgram(self.shader)
+            
             self.wood_texture.use()
+            model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
+            model_transform = pyrr.matrix44.multiply(
+                m1 = model_transform,
+                m2 = pyrr.matrix44.create_from_translation(
+                    vec=self.cube.position,
+                    dtype=np.float32
+                )
+            )
             
             # Eulers - pitch, roll, yaw
-            model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
             model_transform = pyrr.matrix44.multiply(
                 m1 = model_transform,
                 m2 = pyrr.matrix44.create_from_eulers(
@@ -122,13 +130,6 @@ class App:
                 )
             )
             
-            model_transform = pyrr.matrix44.multiply(
-                m1 = model_transform,
-                m2 = pyrr.matrix44.create_from_translation(
-                    vec=self.cube.position,
-                    dtype=np.float32
-                )
-            )
             gl.glUniformMatrix4fv(self.modelMatrixLocation, 1, gl.GL_FALSE, model_transform)
             gl.glBindVertexArray(self.cube_mesh.vao)
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.cube_mesh.vertex_count)
