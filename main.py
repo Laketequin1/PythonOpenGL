@@ -34,7 +34,7 @@ class App:
         
         # Add cube and textures. Eulers - pitch, roll, yaw
         self.cube = Cube(
-            position = [0, 0, -95],
+            position = [0, 0, -90],
             eulers = [0, 0, 0]
         )
         
@@ -98,7 +98,7 @@ class App:
                 self.cube.eulers[0] = 0
                 
             self.cube.position[2] += distance_change
-            if self.cube.position[2] < -100:
+            if self.cube.position[2] < -90:
                 distance_change *= -1
             if self.cube.position[2] > -3:
                 distance_change = 0
@@ -113,19 +113,20 @@ class App:
             
             self.wood_texture.use()
             model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
-            model_transform = pyrr.matrix44.multiply(
-                m1 = model_transform,
-                m2 = pyrr.matrix44.create_from_translation(
-                    vec=self.cube.position,
-                    dtype=np.float32
-                )
-            )
             
             # Eulers - pitch, roll, yaw
             model_transform = pyrr.matrix44.multiply(
                 m1 = model_transform,
                 m2 = pyrr.matrix44.create_from_eulers(
                     eulers=np.radians(self.cube.eulers),
+                    dtype=np.float32
+                )
+            )
+            
+            model_transform = pyrr.matrix44.multiply(
+                m1 = model_transform,
+                m2 = pyrr.matrix44.create_from_translation(
+                    vec=self.cube.position,
                     dtype=np.float32
                 )
             )
