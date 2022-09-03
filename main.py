@@ -38,14 +38,14 @@ class App:
             eulers = [0, 0, 0]
         )
         
-        self.cube_mesh = CubeMesh()
+        self.cube_mesh = Mesh('models/rendering_object.obj')
         
-        self.wood_texture = Material("gfx/wood.jpg")
+        self.wood_texture = Material("gfx/rendering_texture.jpg")
         
         # Generate perspective projection
         projection_transform = pyrr.matrix44.create_perspective_projection(
             fovy = 45, aspect = 640/480,
-            near = 0.1, far = 20, dtype=np.float32
+            near = 0.1, far = 50, dtype=np.float32
         )
         
         gl.glUniformMatrix4fv(
@@ -143,63 +143,15 @@ class App:
         pg.quit()
 
 
-class CubeMesh:
+class Mesh:
     
-    def __init__(self):
+    def __init__(self, filepath):
         
-        # x, y, z, s, t
-        self.vertices = (
-           -0.5, -0.5, -0.5, 0, 0,
-            0.5, -0.5, -0.5, 1, 0,
-            0.5,  0.5, -0.5, 1, 1,
-
-            0.5,  0.5, -0.5, 1, 1,
-           -0.5,  0.5, -0.5, 0, 1,
-           -0.5, -0.5, -0.5, 0, 0,
-
-           -0.5, -0.5,  0.5, 0, 0,
-            0.5, -0.5,  0.5, 1, 0,
-            0.5,  0.5,  0.5, 1, 1,
-
-            0.5,  0.5,  0.5, 1, 1,
-           -0.5,  0.5,  0.5, 0, 1,
-           -0.5, -0.5,  0.5, 0, 0,
-
-           -0.5,  0.5,  0.5, 1, 0,
-           -0.5,  0.5, -0.5, 1, 1,
-           -0.5, -0.5, -0.5, 0, 1,
-
-           -0.5, -0.5, -0.5, 0, 1,
-           -0.5, -0.5,  0.5, 0, 0,
-           -0.5,  0.5,  0.5, 1, 0,
-
-            0.5,  0.5,  0.5, 1, 0,
-            0.5,  0.5, -0.5, 1, 1,
-            0.5, -0.5, -0.5, 0, 1,
-
-            0.5, -0.5, -0.5, 0, 1,
-            0.5, -0.5,  0.5, 0, 0,
-            0.5,  0.5,  0.5, 1, 0,
-
-           -0.5, -0.5, -0.5, 0, 1,
-            0.5, -0.5, -0.5, 1, 1,
-            0.5, -0.5,  0.5, 1, 0,
-
-            0.5, -0.5,  0.5, 1, 0,
-           -0.5, -0.5,  0.5, 0, 0,
-           -0.5, -0.5, -0.5, 0, 1,
-
-           -0.5,  0.5, -0.5, 0, 1,
-            0.5,  0.5, -0.5, 1, 1,
-            0.5,  0.5,  0.5, 1, 0,
-
-            0.5,  0.5,  0.5, 1, 0,
-           -0.5,  0.5,  0.5, 0, 0,
-           -0.5,  0.5, -0.5, 0, 1
-            )
+        # x, y, z, s, t, nx, ny, nz
+        self.vertices = self.load_mesh(filepath)
         
         # // is integer division
-        self.vertex_count = len(self.vertices) // 5
+        self.vertex_count = len(self.vertices) // 8
         
         self.vertices = np.array(self.vertices, dtype=np.float32)
         
@@ -216,13 +168,54 @@ class CubeMesh:
         # Location 1 - Postion
         gl.glEnableVertexAttribArray(0)
         # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
-        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 20, ctypes.c_void_p(0))
+        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(0))
         
         # Location 2 - ST
         gl.glEnableVertexAttribArray(1)
         # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
-        gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 20, ctypes.c_void_p(12))
+        gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(12))
+    
+    @staticmethod
+    def load_mesh(filepath):
+    
+        vertices = []
         
+        flags = {"v": [], "vt": [], "vn": []}
+        
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+            
+            for line in lines:
+                line.replace("\n", "")
+                
+                first_space = line.find(" ")
+                flag = line[0:first_space]
+                
+                if flag in flags.keys():
+                    line = line.replace(flag + " ", "")
+                    line = line.split(" ")
+                    flags[flag].append([float(x) for x in line])
+                elif flag == "f":
+                    line = line.replace(flag + " ", "")
+                    line = line.split(" ")
+                    
+                    face_vertices = []
+                    face_textures = []
+                    face_normals = []
+                    for vertex in line:
+                        l = vertex.split("/")
+                        face_vertices.append(flags["v"][int(l[0]) - 1])
+                        face_textures.append(flags["vt"][int(l[1]) - 1])
+                        face_normals.append(flags["vn"][int(l[2]) - 1])
+                    triangles_in_face = len(line) - 2
+                    vertex_order = []
+                    for x in range(triangles_in_face):
+                        vertex_order.extend((0, x + 1, x + 2))
+                    for x in vertex_order:
+                        vertices.extend((*face_vertices[x], *face_textures[x], *face_normals[x]))
+        
+        return vertices
+    
     def destroy(self):
         
         # Remove allocated memory
