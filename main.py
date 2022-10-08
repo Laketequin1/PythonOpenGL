@@ -50,6 +50,18 @@ class Scene:
                 position = [6, 0, 0],
                 eulers = [0, 0, 0]
             ),
+            Cube(
+                position = [10, 0, 0],
+                eulers = [0, 0, 0]
+            ),
+            Cube(
+                position = [14, 0, 0],
+                eulers = [0, 0, 0]
+            ),
+            Cube(
+                position = [14, 0, 4],
+                eulers = [0, 0, 0]
+            )
         ]
 
         self.player = Player(
@@ -229,8 +241,8 @@ class GraphicsEngine:
                                     pg.GL_CONTEXT_PROFILE_CORE)
         pg.display.set_mode((screen_width, screen_height), pg.OPENGL|pg.DOUBLEBUF)
         
-        self.wood_texture = Material("gfx/wood.jpeg")
-        self.cube_mesh = Mesh("models/cube.obj")
+        self.wood_texture = Material("gfx/rendering_texture.jpg")
+        self.cube_mesh = Mesh("models/normal_quality_sphere.obj")
 
         #initialise opengl
         gl.glClearColor(0.9, 0.5, 0.8, 1)
@@ -298,7 +310,7 @@ class GraphicsEngine:
             gl.glBindVertexArray(self.cube_mesh.vao)
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.cube_mesh.vertex_count)
 
-            pg.display.flip()
+        pg.display.flip()
     
     def destroy(self):
 
