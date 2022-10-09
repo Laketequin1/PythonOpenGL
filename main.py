@@ -14,6 +14,15 @@ class Cube:
         self.position = np.array(position, dtype=np.float32)
 
 
+class Light:
+    
+    def __init__(self, position, color, strength):
+        
+        self.position = np.array(position, dtype=np.float32)
+        self.color = np.array(color, dtype=np.float32)
+        self.strength = strength
+
+
 class Player:
 
     def __init__(self, position):
@@ -47,23 +56,30 @@ class Scene:
 
         self.cubes = [
             Cube(
-                position = [6, 0, 0],
-                eulers = [0, 0, 0]
-            ),
-            Cube(
-                position = [10, 0, 0],
-                eulers = [0, 0, 0]
-            ),
-            Cube(
-                position = [14, 0, 0],
-                eulers = [0, 0, 0]
-            ),
-            Cube(
-                position = [14, 0, 4],
+                position = [i*2.2 + 6, 0, j*2.2],
                 eulers = [0, 0, 0]
             )
+            for i in range(15)
+            for j in range(15)
         ]
 
+        self.lights = [
+            Light(
+                position = [
+                    np.random.uniform(5.0, 40.0),
+                    np.random.uniform(2.0, 4.0),
+                    np.random.uniform(5.0, 40.0),
+                ],
+                color = [
+                    np.random.uniform(0.0, 1.0),
+                    np.random.uniform(0.0, 1.0),
+                    np.random.uniform(0.0, 1.0),
+                ],
+                strength = 8
+            )
+            for i in range(8)
+        ]
+        
         self.player = Player(
             position = [0, 2, 0]
         )
@@ -71,9 +87,9 @@ class Scene:
     def update(self, rate):
 
         for cube in self.cubes:
-            cube.eulers[1] += 0.25 * rate
-            if cube.eulers[1] > 360:
-                cube.eulers[1] -= 360
+            cube.eulers[0] += 0.25 * rate
+            if cube.eulers[0] > 360:
+                cube.eulers[0] -= 360
 
     def move_player(self, d_pos):
 
@@ -206,10 +222,10 @@ class App:
     def handle_mouse(self):
 
         (x, y) = pg.mouse.get_pos()
-        theta_increment = self.frame_time * 0.05 * ((self.screen_width // 2) - x)
-        phi_increment = self.frame_time * 0.05 * ((self.screen_height // 2) - y)
+        theta_increment = 0.1 * ((self.screen_width // 2) - x)
+        phi_increment = 0.1 * ((self.screen_height // 2) - y)
         self.scene.spin_player(-theta_increment, phi_increment)
-        pg.mouse.set_pos((self.screen_width // 2,self.screen_height // 2))
+        pg.mouse.set_pos((self.screen_width // 2, self.screen_height // 2))
 
     def calculate_framerate(self):
 
@@ -242,17 +258,17 @@ class GraphicsEngine:
         pg.display.set_mode((screen_width, screen_height), pg.OPENGL|pg.DOUBLEBUF)
         
         self.wood_texture = Material("gfx/rendering_texture.jpg")
-        self.cube_mesh = Mesh("models/normal_quality_sphere.obj")
+        self.cube_mesh = Mesh("models/rendering_object.obj")
 
         #initialise opengl
-        gl.glClearColor(0.9, 0.5, 0.8, 1)
+        gl.glClearColor(0.0, 0.0, 0.0, 1)
         self.shader = self.create_shader("shaders/vertex.txt", "shaders/fragment.txt")
         gl.glUseProgram(self.shader)
         gl.glUniform1i(gl.glGetUniformLocation(self.shader, "imageTexture"), 0)
         gl.glEnable(gl.GL_DEPTH_TEST)
 
         projection_transform = pyrr.matrix44.create_perspective_projection(
-            fovy = 45, aspect = 640/480, 
+            fovy = 60, aspect = screen_width/screen_height, 
             near = 0.1, far = 50, dtype=np.float32
         )
         gl.glUniformMatrix4fv(
@@ -261,6 +277,21 @@ class GraphicsEngine:
         )
         self.model_matrix_location = gl.glGetUniformLocation(self.shader, "model")
         self.view_matrix_location = gl.glGetUniformLocation(self.shader, "view")
+        self.light_location = {
+            "position": [
+                gl.glGetUniformLocation(self.shader, f"Lights[{i}].position")
+                for i in range(8)
+                ],
+            "color": [
+                gl.glGetUniformLocation(self.shader, f"Lights[{i}].color")
+                for i in range(8)
+                ],
+            "strength": [
+                gl.glGetUniformLocation(self.shader, f"Lights[{i}].strength")
+                for i in range(8)
+                ]
+        }
+        self.camera_position = gl.glGetUniformLocation(self.shader, "cameraPosition")
         
     def create_shader(self, vertex_filepath, fragment_filepath):
         
@@ -290,6 +321,12 @@ class GraphicsEngine:
         )
         gl.glUniformMatrix4fv(self.view_matrix_location, 1, gl.GL_FALSE, view_transform)
 
+        for i, light in enumerate(scene.lights):
+            gl.glUniform3fv(self.light_location["position"][i], 1, light.position)
+            gl.glUniform3fv(self.light_location["color"][i], 1, light.color)
+            gl.glUniform1f(self.light_location["strength"][i], light.strength)
+        gl.glUniform3fv(self.camera_position, 1, scene.player.position)
+        
         for cube in scene.cubes:
 
             model_transform = pyrr.matrix44.create_identity(dtype=np.float32)
@@ -351,6 +388,11 @@ class Mesh:
         gl.glEnableVertexAttribArray(1)
         # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
         gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(12))
+        
+        # Location 3 - Normal
+        gl.glEnableVertexAttribArray(2)
+        # Location, number of floats, format (float), gl.GL_FALSE, stride (total length of vertex, 4 bytes times number of floats), ctypes of starting position in bytes (void pointer expected)
+        gl.glVertexAttribPointer(2, 3, gl.GL_FLOAT, gl.GL_FALSE, 32, ctypes.c_void_p(20))
     
     @staticmethod
     def load_mesh(filepath):
@@ -437,4 +479,4 @@ class Material:
 
 
 if __name__ == "__main__":
-    myApp = App(1200, 900)
+    myApp = App(1200, 800)
